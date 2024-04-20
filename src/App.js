@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import './App.css';
 import axios from 'axios';
+import './App.css';
+
 
 function App() {
   const [contacts, setContacts] = useState([]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     fetchContacts();
@@ -34,21 +36,33 @@ function App() {
 
   const handleUpdateContact = async (id) => {
     try {
-      const updatedContact = { name, phone }; // Updated data for the contact
+      const updatedContact = { name, phone };
       await axios.put(`https://jsonplaceholder.typicode.com/users/${id}`, updatedContact);
-      
-      // Update the local state with the updated contact
       const updatedContacts = contacts.map(contact =>
-        contact.id === id ? { ...contact, name, phone } : contact
+        contact.id === id ? { ...contact, ...updatedContact } : contact
       );
       setContacts(updatedContacts);
-      
-      // Clear the input fields
+      setEditingId(null);
       setName('');
       setPhone('');
     } catch (error) {
       console.error('Error updating contact:', error);
     }
+  };
+
+  const handleDeleteContact = async (id) => {
+    try {
+      await axios.delete(`https://jsonplaceholder.typicode.com/users/${id}`);
+      setContacts(contacts.filter(contact => contact.id !== id));
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+    }
+  };
+
+  const handleEdit = (id, currentName, currentPhone) => {
+    setEditingId(id);
+    setName(currentName);
+    setPhone(currentPhone);
   };
 
   return (
@@ -69,16 +83,42 @@ function App() {
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
-        <button className="btn btn-primary mr-3" onClick={handleAddContact}>Add Contact</button>
+        <button className="btn btn-primary mr-3" onClick={editingId ? () => handleUpdateContact(editingId) : handleAddContact}>
+          {editingId ? 'Update Contact' : 'Add Contact'}
+        </button>
       </div>
       <ul className="list-group">
         {contacts.map(contact => (
           <li key={contact.id} className="list-group-item d-flex justify-content-between align-items-center">
+            {editingId === contact.id ? (
+              <div>
+                <input
+                  type="text"
+                  className="form-control mb-2"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                <input
+                  type="text"
+                  className="form-control"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div>
+                <strong>{contact.name}</strong>: {contact.phone}
+              </div>
+            )}
             <div>
-              <strong>{contact.name}</strong>: {contact.phone}
-            </div>
-            <div>
-              <button className="btn btn-info mr-2" onClick={() => handleUpdateContact(contact.id)}>Update</button>
+              {editingId === contact.id ? (
+                <button className="btn btn-success mr-2" onClick={() => handleUpdateContact(contact.id)}>Save</button>
+              ) : (
+                <>
+                  <button className="btn btn-info mr-2" onClick={() => handleEdit(contact.id, contact.name, contact.phone)}>Edit</button>
+                  <button className="btn btn-danger" onClick={() => handleDeleteContact(contact.id)}>Delete</button>
+                </>
+              )}
             </div>
           </li>
         ))}
